@@ -105,6 +105,15 @@ impl<'a> Value<'a> {
             _ => panic!("Expected string, got {:?}", self),
         }
     }
+
+    fn as_stringify(&self) -> String {
+        match self {
+            Value::Str(s) => s.to_owned(),
+            Value::Int(i) => i.to_string().into(),
+            Value::Bool(b) => b.to_string().into(),
+            _ => panic!("Cannot convert {:?} into string", self),
+        }
+    }
 }
 
 impl Debug for Value<'_> {
@@ -261,8 +270,44 @@ fn eval<'a>(pair: Pair<'a, Rule>, stack: &mut Vec<Namespace<'a>>, ctx: &Context)
         Rule::int_literal => Value::Int(pair.as_str().parse::<u64>().unwrap()),
         Rule::bool_literal => Value::Bool(pair.as_str() == "true"),
         Rule::string_literal => {
-            let pair_str = pair.as_str();
-            Value::Str(pair_str[1..pair_str.len() - 1].into())
+            let mut result = String::new();
+            for span in pair.into_inner() {
+                match span.as_rule() {
+                    Rule::string_span => {
+                        result.push_str(span.as_str());
+                    }
+                    Rule::ident | Rule::expr => {
+                        let val = eval(span, stack, ctx);
+                        result.push_str(&val.as_stringify());
+                    }
+                    _ => unreachable!("{:#?}", span),
+                }
+            }
+            Value::Str(result)
+        }
+        Rule::command_literal => {
+            let mut args = vec![];
+            for span in pair.into_inner() {
+                match span.as_rule() {
+                    Rule::string_span => {
+                        let span_str = span.as_str();
+                        span_str.split(' ').for_each(|s| {
+                            if !s.is_empty() {
+                                args.push(Value::Str(s.into()));
+                            }
+                        });
+                    }
+                    Rule::ident | Rule::expr => {
+                        args.push(eval(span, stack, ctx));
+                    }
+                    _ => unreachable!("{:#?}", span),
+                }
+            }
+
+            let mut dict = HashMap::default();
+            dict.insert("_type".into(), Value::Str("Command".into()));
+            dict.insert("args".into(), Value::List(args));
+            Value::Dict(Rc::new(RefCell::new(dict)))
         }
         Rule::list_literal => {
             Value::List(pair.into_inner().map(|tok| eval(tok, stack, ctx)).collect())
@@ -688,7 +733,7 @@ fn print_err_with_context(src: &str, line_col: (usize, usize)) {
         .skip(first_ctx_line)
         .take(last_ctx_line - first_ctx_line);
     for (i, line) in lines_iter.enumerate() {
-        eprintln!("{:>3} | {}", first_ctx_line + i, line);
+        eprintln!("{:>3} | {}", first_ctx_line + i + 1, line);
         if first_ctx_line + i == line_col.0 - 1 {
             eprintln!("    | {}^", " ".repeat(line_col.1 - 1));
         }

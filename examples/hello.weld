@@ -1,6 +1,6 @@
 # C Toolchain
-obj(src) => Rule(Command(["clang", "-c", In(src), "-o", Out("./build/obj/" + UNIQUE + ".o")]), "CC", [], [])
-bin(name, srcs) => Rule(Command(["clang", map(obj, srcs), "-o", Out("./build/bin/" + name)]), "LD", [], [])
+obj(src) => Rule(c"clang -c ${In(src)} -o ${Out("./build/obj/$UNIQUE.o")}")
+bin(name, srcs) => Rule(c"clang ${map(obj, srcs)} -o ${Out("./build/bin/$name")}")
 
 # Hello world binary
 hello = bin("hello", ["0.c", "1.c"])
