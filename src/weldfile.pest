@@ -1,0 +1,21 @@
+WHITESPACE = _{ " " }
+COMMENT = { "#" ~ (!NEWLINE ~ ANY)* ~ (NEWLINE | EOI) }
+
+ident = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+int_literal = @{ ASCII_DIGIT+ }
+bool_literal = @{ ("true" | "false") ~ !(ASCII_ALPHANUMERIC | "_") }
+string_literal = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+list_literal = { "[" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ "]" }
+dict_item = _{ func_def | assignment }
+dict_literal = { "{" ~ NEWLINE* ~ (dict_item ~ (sep ~ dict_item)* ~ sep?)? ~ "}" }
+assignment = { ident ~ "=" ~ expr }
+func_def = { ident ~ "(" ~ (ident ~ (sep ~ ident)*)? ~ ")" ~ "=>" ~ expr }
+
+raw_expr = { bool_literal | int_literal | string_literal | list_literal | dict_literal | ident | "(" ~ expr ~ ")" }
+member_access = { "." ~ ident }
+func_call = { "(" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ ")" }
+op_add = { "+" ~ expr }
+op_mul = { "*" ~ expr }
+expr = { raw_expr ~ (member_access | func_call)* ~ (op_mul | op_add)? }
+sep = _{ ("," | NEWLINE+) }
+module = _{ SOI ~ NEWLINE* ~ (dict_item ~ (sep ~ dict_item)*)? ~ sep? ~ EOI }

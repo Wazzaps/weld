@@ -1,0 +1,9 @@
+# C Toolchain
+obj(src) => Rule(Command(["clang", "-c", In(src), "-o", Out("./build/obj/" + UNIQUE + ".o")]), "CC", [], [])
+bin(name, srcs) => Rule(Command(["clang", map(obj, srcs), "-o", Out("./build/bin/" + name)]), "LD", [], [])
+
+# Hello world binary
+hello = bin("hello", ["0.c", "1.c"])
+
+# Default targets
+all = [hello]
